@@ -1,6 +1,7 @@
 -- Martin Braun, 1249080
--- 5. Uebung
--- Tic Tac Toe
+-- 6. Uebung
+-- Aufgabe 1
+-- Tic Tac Toe KIs
 module Main where
 
 import Data.Either
@@ -20,7 +21,11 @@ import Debug.Trace (trace, traceId, traceM)
 --------------------------------------------------------------------
 --------------------------------------------------------------------
 
-data GameState = Game { board :: Board, currentPlayer :: Player, errorMessage :: String }
+data GameState = Game { board :: Board,
+                        currentPlayer :: Player,
+                        errorMessage :: String,
+                        randomList :: [Int]
+                      }
 type Board = [[Value]]
 type Value = Either Int Player
 data Player = X | O deriving (Eq, Show)
@@ -63,9 +68,10 @@ possibleSolutions player board =
     [setTo pos player board | (pos, player, board) <- (sortBy cmp [(pos, player, board) | pos <- [k | k <- (empty board)]])]
         where cmp (pos1, player1, board1) (pos2, player2, board2) 
                 = compare (value pos1 player1 board1) (value pos2 player2 board2)
-                
-deterministicKI :: Player -> Board -> Board
-deterministicKI player board = head $ possibleSolutions player board
+
+difference :: Board -> Board -> Int
+difference oldBoard newBoard = unwrap (head (((concat oldBoard) \\ (concat newBoard))))
+    where unwrap (Left x) = x
 
 -- if we win the next turn, we prefer this choice
 -- the next most important thing is to prevent us from losing
@@ -116,6 +122,25 @@ checkAndSetTo :: Int -> Player -> Board -> (Player, Board, String)
 checkAndSetTo pos player board 
     | [pos] `intersect` (empty board) == [pos] = ((other player), (setTo pos player board), "")
     | otherwise = (player, board, "Position already occupied!")
+    
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+----------------     Artificial Intelligences   --------------------
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+
+-- we are lazy, so we dont use a generator in these methods
+-- but instead pass an infinite list of random values
+-- and return the new infinite list of random values minus
+-- the ones we consumed
+
+deterministicKI :: Player -> Board -> [Int] -> (Int, [Int])
+deterministicKI player board genList = (difference (board) (head $ possibleSolutions player board), genList)
+
+undeterministicKI :: Player -> Board -> [Int] -> (Int, [Int])
+undeterministicKI player board (x:xs)
+        | (empty board) `intersect` [x] == [x] = (x, xs)
+        | otherwise = undeterministicKI player board xs
         
 --------------------------------------------------------------------
 --------------------------------------------------------------------
@@ -139,12 +164,24 @@ playGame (x:xs) = do
         let resBoard = newBoard
         let resGame = Game {board = resBoard, 
                             currentPlayer = nextPlayer,
-                            errorMessage = error}
+                            errorMessage = error,
+                            randomList = randomList game
+                            }
         put resGame
         playGame xs
+        
+setToGameState :: Int -> Player -> [Int] -> GameState -> GameState
+setToGameState pos player genList game  = 
+        let (nextPlayer, newBoard, error) = checkAndSetTo pos player (board game) in 
+        Game {board = newBoard, 
+                currentPlayer = nextPlayer,
+                errorMessage = error,
+                randomList = genList
+             }
+
     
-initGameState :: GameState
-initGameState = Game {board = initialBoard, currentPlayer = X, errorMessage = ""}
+initGameState :: [Int] -> GameState
+initGameState genList = Game {board = initialBoard, currentPlayer = X, errorMessage = "", randomList = genList}
 
 limitLength :: String -> Int -> String
 limitLength str max = reverse $ go str max
@@ -152,19 +189,32 @@ limitLength str max = reverse $ go str max
                 go _ 0 = []
                 go (x:xs) max = [x] ++ (go xs (max - 1)) 
 
--- Lösung ohne Interact, ich weiß
+-- Copy Pasta code, yeah!
 playGameIO :: GameState -> IO()
 playGameIO game = do
     let curPlayer = currentPlayer game
-    putStrLn $ "Player " ++ (show curPlayer) ++ ", please input your turn"
-    input <- getLine
-    let inputLimited = limitLength input 1
-    let (nextState, _) = runState ( do playGame inputLimited ) game
-    let resBoard = board nextState
-    putStrLn $ show nextState
-    if (win curPlayer resBoard) then putStrLn ("Player " ++ (show curPlayer) ++ " wins!") else putStrLn ""
-    if (over resBoard) then return () else playGameIO nextState
+    if curPlayer == X then do
+        putStrLn $ "Player " ++ (show curPlayer) ++ ", please input your turn"
+        input <- getLine
+        let inputLimited = limitLength input 1
+        let (nextState, _) = runState ( do playGame inputLimited ) game
+        let resBoard = board nextState
+        putStrLn $ show nextState
+        if (win curPlayer resBoard) then putStrLn ("Player " ++ (show curPlayer) ++ " wins!") else putStrLn ""
+        if (over resBoard) then return () else playGameIO nextState
+    else do
+        putStrLn $ "CPU Player " ++ (show curPlayer) ++ " is inputting its turn."
+        -- we could pass the function to be used in here
+        -- or just write "undeterministicKI" instead of "deterministicKI"
+        let (cpuPos, remGenList) = deterministicKI curPlayer (board game) (randomList game)
+        let nextState = setToGameState cpuPos curPlayer remGenList game
+        let resBoard = board nextState
+        putStrLn $ show nextState
+        if (win curPlayer resBoard) then putStrLn ("Player " ++ (show curPlayer) ++ " wins!") else putStrLn ""
+        if (over resBoard) then return () else playGameIO nextState
     
 main = do
-    putStrLn (show initGameState)
-    playGameIO initGameState
+    g <- getStdGen
+    let randomInts = randomRs (1, 9) g
+    putStrLn (show (initGameState randomInts))
+    playGameIO (initGameState randomInts)
