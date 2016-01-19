@@ -1,3 +1,4 @@
+-- Martin Braun 1249080
 module Main where
 
 import Prelude
@@ -14,6 +15,9 @@ fft_do f w = mix (fft_do (l @+ r) (w*w)) (fft_do ((l @- r)@* aw) (w*w))
         aw = take n $ iterate (*w) 1
 
 root_of_unity :: (RealFloat a, Integral b) => b -> b -> Complex a
+root_of_unity j n = (exp (((2 * pi) / (toComplex n)) * (0 :+ 1)))
+
+toComplex x = ( fromRational . toRational ) x :+ fromInteger 0
 
 split xs = let m = (length xs) `div` 2
            in splitAt m xs

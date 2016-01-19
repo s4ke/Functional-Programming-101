@@ -1,3 +1,4 @@
+-- Martin Braun 1249080
 module Main where
 
 import Prelude hiding (length, sum, map, zipWith, (++))

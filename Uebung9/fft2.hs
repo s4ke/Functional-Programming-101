@@ -1,3 +1,4 @@
+-- Martin Braun 1249080
 module Main where
 
 import Prelude
@@ -21,6 +22,7 @@ dc isTrivial divide trivial combine cur
         
 {-  
     hier fehlt mir leider der Mathematische Hintergrund :D
+    Alles was ich hier machen würde, wäre nur geraten.
     Hätte anscheinend doch in die Übung gehen sollen.
     splitHalves = 
     
