@@ -15,15 +15,12 @@ testTree = Node 5
             )
             (Node 10 Empty Empty)
 
-fnTree = Node (+5)
-            (Node (*3)  
-                (Node (subtract 1) Empty Empty)  
-                (Node (+6) Empty Empty)  
-            )  
-            (Node (+9)  
-                (Node (subtract 8) Empty Empty)  
-                (Node (*10) Empty Empty)  
-            )       
+fnTree = Node (*3)  
+            (Node (subtract 9)  Empty (
+                        Node (+5) Empty (Node (+3) Empty Empty)
+                    )
+            )
+            (Node (*0) Empty Empty) 
 
 data Tree a = Empty | Node a (Tree a) (Tree a) deriving (Show, Read, Eq)
 
