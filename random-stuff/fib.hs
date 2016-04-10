@@ -9,4 +9,4 @@ fib 1 = 1
 fib x = (fib (x - 1)) + (fib (x - 2))
 
 main = do
-    fmap (fib . read . head) getArgs >>= print
+    (fib . read . head) <$> getArgs >>= print
